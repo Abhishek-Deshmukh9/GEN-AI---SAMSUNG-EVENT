@@ -30,12 +30,12 @@ def main() -> None:
     logger.info("Loading MTEB task 'AppsRetrieval'...")
     task = mteb.get_task("AppsRetrieval")
 
-    logger.info("Starting MTEB evaluation (batch_size=64)...")
+    logger.info("Running MTEB evaluation (batch_size=64)...")
     result = mteb.evaluate(
         model,
         [task],
         encode_kwargs={"batch_size": 64},
-        overwrite_strategy="always",
+        overwrite_strategy="only-missing",
     )
 
     # Extract task results
@@ -49,7 +49,7 @@ def main() -> None:
     logger.info(f"Writing evaluation results to {output_path.resolve()}...")
     result_dict = task_result.to_dict()
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(result_dict, f, indent=2)
+        json.dump(result_dict, f, indent=2, default=str)
 
     logger.info("Evaluation results saved successfully!")
 
