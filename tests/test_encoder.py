@@ -16,7 +16,7 @@ import unittest
 
 class TestEncoder(unittest.TestCase):
     def test_encoder_initialization_and_inheritance(self):
-        encoder = PrePostPipelineEncoder(device="cpu")
+        encoder = PrePostPipelineEncoder(model_name="sentence-transformers/all-MiniLM-L6-v2", device="cpu")
         self.assertIsInstance(encoder, AbsEncoder)
         self.assertTrue(hasattr(encoder, "mteb_model_meta"))
         self.assertEqual(
@@ -25,7 +25,7 @@ class TestEncoder(unittest.TestCase):
         self.assertEqual(encoder.mteb_model_meta.embed_dim, 384)
 
     def test_encoder_query_and_document_encoding(self):
-        encoder = PrePostPipelineEncoder(device="cpu")
+        encoder = PrePostPipelineEncoder(model_name="sentence-transformers/all-MiniLM-L6-v2", device="cpu")
 
         # Test query encoding (triggers query preprocessing)
         queries = ["How is the input preprocessed before going to the main function?"]

@@ -4,3 +4,11 @@ __pycache__/
 *.pyc
 data/
 .cache/
+*.log
+results_prepare.log
+eval_coderankembed.log
+results/predictions/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.pytest_cache/

@@ -1,4 +1,4 @@
-# Agentic Code Intelligence - Phase 1 Prototype
+# Agentic Code Intelligence — Code Retrieval on CPU
 
 ## Overview
 This repository contains the Phase 1 prototype for the **Agentic Code Intelligence** project. The solution is engineered for high-accuracy code retrieval over large, evolving codebases under strict minimal GPU resource constraints (100% CPU-optimized execution).
@@ -26,10 +26,11 @@ This repository contains the Phase 1 prototype for the **Agentic Code Intelligen
    - **aggregate_scores**: Max-pooling of per-chunk similarity scores back to one score per document, ready to be called from `encoder.py` before MTEB ranks documents.
    - **Zero Generative LLMs / Zero GPU**: Pure `ast` static analysis, hashing, and string assembly. Standard library plus Pydantic only — no tokenizer, no network, no GPU, no LLM API calls.
 
-3. **MTEB Baseline Pipeline (`src/encoder.py`)**
+3. **MTEB Retrieval Pipeline (`src/encoder.py`)**
    - **PrePostPipelineEncoder**: Subclasses `mteb.models.abs_encoder.AbsEncoder`.
-   - **Model**: `sentence-transformers/all-MiniLM-L6-v2` loaded on CPU.
-   - **Query Preprocessing Integration**: Intercepts queries (`prompt_type == PromptType.query`) through `QueryParser` to enrich dense representation with extracted tokens and intent prompts.
+   - **Model**: `nomic-ai/CodeRankEmbed` (137M, code-specific) on CPU, inputs capped at 512 tokens.
+   - **Query instruction**: queries get the model's required prefix (`Represent this query for searching relevant code: `).
+   - **Query Preprocessing Integration**: `QueryParser` categorizes every query; its enriched text (`enrich_queries=True`) is off by default because its intent prefix conflicts with the model's query instruction on long APPS problem statements.
    - Directly conforms to MTEB 2.x interface and passes all test assertions.
 
 4. **MTEB AppsRetrieval Evaluation (`evaluate.py`)**
@@ -63,7 +64,11 @@ This repository contains the Phase 1 prototype for the **Agentic Code Intelligen
 
 ---
 
-## Baseline Results (CoIR AppsRetrieval)
+## Results (CoIR AppsRetrieval, test split)
+
+_`appsretrieval_results.json` is still the MiniLM baseline (also in `results/baseline_minilm_results.json`). Re-run `python scripts/prepare.py`, `python scripts/tune_dev.py`, then `python evaluate.py` to produce the hybrid CodeRankEmbed + BM25 result._
+
+### Baseline: all-MiniLM-L6-v2
 
 | Metric | Score |
 | :--- | :--- |
@@ -121,7 +126,20 @@ python tests/test_encoder.py
 ```bash
 python evaluate.py
 ```
-This produces `appsretrieval_results.json` adhering to the MTEB evaluation format.
+This produces `appsretrieval_results.json` adhering to the MTEB evaluation format
+(the same file is attached to the GitHub release).
+
+### 4. Run the Retrieval Demo
+```bash
+python demo.py --limit 500                                  # quick interactive demo
+python demo.py --query "count pairs whose sum is divisible by k" -k 5
+python demo.py                                              # full 8.7k-snippet corpus
+```
+The demo prints the query intent, the top-k code snippets, and retrieval latency.
+
+**Versioning (P1):** document embeddings are cached under `.cache/` keyed by a SHA-256
+content hash. Re-indexing a new corpus version re-embeds only snippets whose content
+changed; the demo reports how many were embedded vs. reused.
 
 ---
 

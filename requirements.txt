@@ -1,5 +1,7 @@
 torch>=2.0.0
-sentence-transformers>=3.0.0
+sentence-transformers>=3.0.0,<6
+transformers>=4.45,<5  # CodeRankEmbed remote code breaks on transformers 5
+einops>=0.7
 mteb>=2.0.0
 pydantic>=2.0.0
 nltk>=3.8.0

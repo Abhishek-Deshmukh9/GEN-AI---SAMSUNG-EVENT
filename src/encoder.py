@@ -3,7 +3,7 @@
 Role 1 & Retrieval Baseline: PrePostPipelineEncoder.
 Combines:
 - QueryParser preprocessing for queries (PromptType.query)
-- SentenceTransformer CPU-optimized baseline embedding model (all-MiniLM-L6-v2)
+- Code-specific SentenceTransformer embedding model on CPU (default: nomic-ai/CodeRankEmbed)
 - AbsEncoder conformance for MTEB benchmark execution
 """
 
@@ -37,10 +37,17 @@ class PrePostPipelineEncoder(AbsEncoder):
 
     mteb_model_meta: ModelMeta
 
+    # Query instruction prefixes required by instruction-tuned code embedders.
+    QUERY_PREFIXES = {
+        "nomic-ai/CodeRankEmbed": "Represent this query for searching relevant code: ",
+    }
+
     def __init__(
         self,
-        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        model_name: str = "nomic-ai/CodeRankEmbed",
         device: str = "cpu",
+        max_seq_length: int | None = 512,
+        enrich_queries: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the PrePostPipelineEncoder.
@@ -48,12 +55,20 @@ class PrePostPipelineEncoder(AbsEncoder):
         Args:
             model_name: HuggingFace model repository or local path for the baseline encoder.
             device: Computation device ('cpu' strictly satisfies minimal GPU resource constraints).
+            max_seq_length: Token cap for inputs; bounds CPU cost on long code documents.
+            enrich_queries: Replace queries with QueryParser's enriched text. Off by default:
+                the intent prefix conflicts with the model's own query instruction.
             **kwargs: Additional parameters passed to SentenceTransformer.
         """
         super().__init__()
         self.device = device
         self.base_model_name = model_name
+        kwargs.setdefault("trust_remote_code", True)
         self.model = SentenceTransformer(model_name, device=self.device, **kwargs)
+        if max_seq_length is not None:
+            self.model.max_seq_length = max_seq_length
+        self.query_prefix = self.QUERY_PREFIXES.get(model_name, "")
+        self.enrich_queries = enrich_queries
         self.query_parser = QueryParser()
 
         # Build MTEB ModelMeta for evaluation harness registration
@@ -65,7 +80,7 @@ class PrePostPipelineEncoder(AbsEncoder):
         )
         self.mteb_model_meta = ModelMeta.create_empty(
             overwrites=dict(
-                name="PrePostPipelineEncoder-all-MiniLM-L6-v2",
+                name=f"PrePostPipelineEncoder-{model_name.split('/')[-1]}",
                 revision=base_meta.revision or "1.0.0",
                 embed_dim=embed_dim,
                 languages=["eng", "python"],
@@ -154,16 +169,14 @@ class PrePostPipelineEncoder(AbsEncoder):
         """
         texts = self._extract_texts(inputs)
         if not texts:
-            dim = self.model.get_sentence_embedding_dimension()
+            dim = self.model.get_sentence_embedding_dimension() or 0
             return np.zeros((0, dim), dtype=np.float32)
 
-        # Apply Role 1 Query Understanding preprocessor for queries
+        # Apply Role 1 Query Understanding preprocessor and the model's query instruction
         if prompt_type == PromptType.query:
-            processed_texts: List[str] = []
-            for query_text in texts:
-                structured: StructuredQuery = self.query_parser.parse(query_text)
-                processed_texts.append(structured.processed_query)
-            texts_to_encode = processed_texts
+            if self.enrich_queries:
+                texts = [self.query_parser.parse(q).processed_query for q in texts]
+            texts_to_encode = [self.query_prefix + q.strip() for q in texts]
         else:
             texts_to_encode = texts
 
