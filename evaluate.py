@@ -63,9 +63,8 @@ def main() -> None:
         json.dump({"dense_only": args.dense_only, **asdict(config)}, f, indent=2)
 
     for pred_file in pred_dir.rglob("*.json"):
-        preds = json.loads(pred_file.read_text(encoding="utf-8"))
-        preds = preds.get("test", preds) if isinstance(preds, dict) else preds
-        preds = preds.get("default", preds) if isinstance(preds, dict) else preds
+        # Layout: {"mteb_model_meta": ..., "<subset>": {"<split>": {qid: {doc_id: score}}}}
+        preds = json.loads(pred_file.read_text(encoding="utf-8"))["default"]["test"]
         with open("results/appsretrieval_top10.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["query_id", "rank", "corpus_id", "score"])

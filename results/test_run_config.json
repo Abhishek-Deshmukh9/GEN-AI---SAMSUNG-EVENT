@@ -1,0 +1,19 @@
+{
+  "dense_only": false,
+  "model_name": "nomic-ai/CodeRankEmbed",
+  "max_seq_length": 512,
+  "query_max_tokens": 512,
+  "quantize": "none",
+  "use_dense": false,
+  "use_bm25": true,
+  "w_dense": 1.0,
+  "w_bm25": 0.3,
+  "rrf_k": 60,
+  "prf_docs": 0,
+  "prf_beta": 0.0,
+  "role1_bm25_terms": false,
+  "role1_dense_query": false,
+  "doc_view": "raw",
+  "rerank_top_k": 0,
+  "extra": {}
+}
